@@ -37,6 +37,8 @@ my $answer;
 my $qNum = 0;
 my $startTime;
 my $totalQuestions;
+my $hint;
+my $qPoints;
 
 sub on_connect {
 
@@ -131,14 +133,14 @@ sub on_public {
 		# check if it's the answer
 		if($text eq $answer)
 		{
-			$conn->privmsg($conn->{channel}, $event->{nick}." is awarded 1 point for the answer " . $answer);
+			$conn->privmsg($conn->{channel}, $event->{nick}." is awarded " . $qPoints . " points for the answer: " . $answer);
 			$questionAsked = 0;
 			award_points($conn, $event->{nick}, 1);
 			$numQuestions--;
 			
 			if($numQuestions == 0)
 			{
-				$conn->privmsg($conn->{channel}, "The round is over!" );
+				$conn->privmsg($conn->{channel}, "Stopping Trivia: Round of " . $qNum . " questions over." );
 				show_scores($conn);
 				$triviaStatus = 0;
 			}
@@ -152,6 +154,7 @@ sub trivia_loop {
 	if($questionAsked == 0)
 	{
 		$questionAsked = 1;
+		$qPoints = 4;
 		$startTime = time;
 		ask_question($conn);
 	}
@@ -164,12 +167,20 @@ sub trivia_loop {
 		
 		if($numQuestions == 0)
 		{
-			$conn->privmsg($conn->{channel}, "The round is over!" );
+			$conn->privmsg($conn->{channel}, "Stopping Trivia: Round of " . $qNum . " questions over." );
 			show_scores($conn);
 			$triviaStatus = 0;
 		}
 	}
+	
+	if(get_seconds() == 10 || get_seconds() == 20 || get_seconds() == 30)
+	{
+		show_hint($conn);
+		$qPoints--;
+	}
+
 }
+
 
 # get the number of seconds passed 
 sub get_seconds {
@@ -202,6 +213,7 @@ sub ask_question {
 	}
 	else
 	{
+		$hint = "";
 		$conn->privmsg($conn->{channel}, $qNum . ') ' . $result->{question});
 	}
 
@@ -211,6 +223,56 @@ sub ask_question {
 
 # show a hint
 sub show_hint {
+	my $conn = shift;
+
+	my $prevHint = $hint;
+	my $answerLen = length($answer);
+	
+	my $revealCount = int $answerLen * 0.3;
+	my @hintArr;
+	
+	# create the hint
+	if($prevHint eq "")
+	{
+		my $hideCount = $answerLen - $revealCount;
+		@hintArr = split(//, $answer);
+		
+		while($hideCount > 0)
+		{
+			my $hideIndex = rand($answerLen);
+			$hideIndex = int $hideIndex;
+			
+			# don't hide things that are already hidden or spaces
+			if($hintArr[$hideIndex] ne "*" && $hintArr[$hideIndex] ne " ")
+			{
+				$hintArr[$hideIndex] = "*";
+				$hideCount--;
+			}
+		}
+		
+	}
+	else
+	{
+		my @wordArr = split(//, $answer);
+		@hintArr = split(//, $prevHint);
+		
+		# reveal more letters in the hint
+		while($revealCount > 0)
+		{
+			my $revealIndex = rand($answerLen);
+			$revealIndex = int $revealIndex;
+			
+			if($hintArr[$revealIndex] eq "*")
+			{
+				$hintArr[$revealIndex] = $wordArr[$revealIndex];
+				$revealCount--;
+			}
+		}
+		
+	}
+	
+	$hint = join('',@hintArr);
+	$conn->privmsg($conn->{channel}, "Here's a hint: " . $hint );
 	
 }
 
@@ -294,5 +356,6 @@ while(1) {
 		trivia_loop($conn);
 	}
 	
+	# this causes a really annoying warning while running
 	$irc->do_one_loop();
 }
