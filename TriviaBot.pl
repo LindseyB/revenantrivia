@@ -1,5 +1,11 @@
 #!/usr/bin/perl -w
 
+#################################################################################
+# TriviaBot.pl                                                                  #
+#                                                                               #
+# connects to IRC and runs a triviaBot on the given channel                     #
+#################################################################################
+
 use Net::IRC;
 use DBI;
 use strict;
@@ -7,9 +13,20 @@ use strict;
 my $irc = new Net::IRC;
 my $dbh = DBI->connect("dbi:SQLite:dbname=Trivia.db","","") or die "Can't open DB: $!";
 
-my $botName = "dO__Ob";
-my $password = "trivia";
-my $defaultQuestions = 10;
+
+my $botName = "dO__Ob";       # the bots nick for IRC
+my $password = "trivia";      # the password for admining the bot
+my $defaultQuestions = 10;    # default number of questions if not specified 
+
+my $conn = $irc->newconn(
+	Server 		=> shift || 'irc.freenode.net',      # the network to connect to
+	Port		=> shift || '6667',                  # the port to use for the connection
+	Nick		=> $botName,
+	Ircname		=> 'A RevenanTrivia Bot',
+	Username	=> 'bot'
+);
+
+$conn->{channel} = shift || '#l2l';                  # the channel to join on successful connect
 
 
 
@@ -19,16 +36,7 @@ my $questionAsked = 0;
 my $answer;
 my $qNum = 0;
 my $startTime;
-
-my $conn = $irc->newconn(
-	Server 		=> shift || 'irc.freenode.net',
-	Port		=> shift || '6667',
-	Nick		=> $botName,
-	Ircname		=> 'A Test Bot',
-	Username	=> 'bot'
-);
-
-$conn->{channel} = shift || '#l2l';
+my $totalQuestions;
 
 sub on_connect {
 
@@ -38,7 +46,14 @@ sub on_connect {
 	$conn->join($conn->{channel});
 	$conn->privmsg($conn->{channel}, 'It\'s trivia time!');
 	$conn->{connected} = 1;
+	
+	# get total number of questions in database
+	my $sth = $dbh->prepare(qq{SELECT max(id) FROM questions});
+	$sth->execute() or die $dbh->errstr;
 
+	my @result = $sth->fetchrow_array();
+	$totalQuestions = $result[0];
+	$sth->finish();
 }
 
 sub on_join {
@@ -104,6 +119,7 @@ sub on_public {
 	if($text =~ m/^\!hof/)
 	{
 		# show scores
+		show_scores($conn);
 	}
 
 	if($triviaStatus == 1)
@@ -115,14 +131,15 @@ sub on_public {
 		# check if it's the answer
 		if($text eq $answer)
 		{
-			$conn->privmsg($conn->{channel}, $event->{nick}." is awarded 1 point for the answer " + $answer);
+			$conn->privmsg($conn->{channel}, $event->{nick}." is awarded 1 point for the answer " . $answer);
 			$questionAsked = 0;
 			award_points($conn, $event->{nick}, 1);
 			$numQuestions--;
 			
 			if($numQuestions == 0)
 			{
-				$conn->privmsg($conn->{channel}, "Round over." );
+				$conn->privmsg($conn->{channel}, "The round is over!" );
+				show_scores($conn);
 				$triviaStatus = 0;
 			}
 		}
@@ -144,6 +161,13 @@ sub trivia_loop {
 		$conn->privmsg($conn->{channel}, "Time up! The answer was " . $answer );
 		$questionAsked = 0;
 		$numQuestions--;
+		
+		if($numQuestions == 0)
+		{
+			$conn->privmsg($conn->{channel}, "The round is over!" );
+			show_scores($conn);
+			$triviaStatus = 0;
+		}
 	}
 }
 
@@ -161,7 +185,7 @@ sub ask_question {
 	
 	$qNum++;
 	
-	my $question_number = rand(10) + 1; 
+	my $question_number = rand($totalQuestions) + 1; 
 	$question_number = int $question_number;
 	
 	# get and echo the question
@@ -170,8 +194,16 @@ sub ask_question {
 
 	my $result = $sth->fetchrow_hashref();
 	$answer = $result->{answer};
-
-	$conn->privmsg($conn->{channel}, $qNum . ') ' . $result->{question});
+	
+	if($result->{question} eq "" || $answer eq "")
+	{
+		# null question or answer, pick a new one
+		ask_question();
+	}
+	else
+	{
+		$conn->privmsg($conn->{channel}, $qNum . ') ' . $result->{question});
+	}
 
 	$sth->finish();
 		
@@ -214,7 +246,36 @@ sub award_points {
 
 # show the scores
 sub show_scores {
+	my $conn = shift;
 
+	my $sth = $dbh->prepare(qq{SELECT * FROM players ORDER BY score DESC});
+	$sth->execute() or die $dbh->errstrl;
+	#my $result = $sth->fetchrow_hashref();
+	my $msg = "The top scoring players are: ";
+	
+	my $i = 0;
+	
+	my( $player, $score);
+	$sth->bind_columns(\$player, \$score);
+
+	while($sth->fetch() && $i < 3)
+	{
+		if($player ne "" || $score ne "")
+		{
+			if($i < 2)
+			{
+				$msg .= $player . " with " . $score . ", ";
+			}
+			else
+			{
+				$msg .= "and " . $player . " with " . $score . ".";
+			}
+		}
+		$i++;
+	}
+	
+	$conn->privmsg($conn->{channel}, $msg);
+	$sth->finish();
 }
 
 $conn->add_handler('join', \&on_join);
