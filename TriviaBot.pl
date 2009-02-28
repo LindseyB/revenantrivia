@@ -224,84 +224,70 @@ sub ask_question {
 # show a hint
 sub show_hint {
 	my $conn = shift;
-
 	my $prevHint = $hint;
 	my $answerLen = length($answer);
-	
-	my $revealCount = int $answerLen * 0.45;
+	my $revealCount;
 	my @hintArr;
+	my $revealIndex;
 	
 	
 	# create the hint
 	if($prevHint eq "")
 	{
-		my $hideCount = $answerLen - $revealCount;
 		@hintArr = split(//, $answer);
 		
-		while($hideCount > 0)
+		for(my $i = 0; $i < $answerLen; $i++)
 		{
-			my $hideIndex = rand($answerLen);
-			$hideIndex = int $hideIndex;
-			
-			# don't hide things that are already hidden or spaces
-			if($hintArr[$hideIndex] ne "*" && $hintArr[$hideIndex] ne " ")
-			{
-				$hintArr[$hideIndex] = "*";
-				$hideCount--;
-			}
+			$hintArr[$i] = "*";
 		}
-		
 	}
 	else
 	{
-		my @wordArr = split(//, $answer);
 		@hintArr = split(//, $prevHint);
-		
-		# check if we can actually reveal the number of letters
-		my $counter;
-		
-		for(my $i=0; $i<$answerLen; $i++)
+	}
+	
+	my @wordArr = split(//, $answer);
+	
+	my $counter;
+	for(my $i=0; $i<$answerLen; $i++)
+	{
+		if($hintArr[$i] eq "*")
 		{
-			if($hintArr[$i] eq "*")
-			{
-				$counter++;
-			}
+			$counter++;
 		}
-		
-		if($counter < $revealCount)
+	}
+	
+	# get the number of letters to reveal
+	$revealCount = $counter * 0.45;
+
+	# reveal more letters in the hint
+	while($revealCount > 0)
+	{
+		$revealIndex = rand($answerLen);
+		$revealIndex = int $revealIndex;
+
+		if($hintArr[$revealIndex] eq "*")
 		{
-			$revealCount = $counter;
+			$hintArr[$revealIndex] = $wordArr[$revealIndex];
+			$revealCount--;
 		}
-		
-		# reveal more letters in the hint
-		while($revealCount > 0)
+		else
 		{
-			my $revealIndex = rand($answerLen);
-			$revealIndex = int $revealIndex;
-			
-			if($hintArr[$revealIndex] eq "*")
+			while($revealCount > ($revealCount - 1))
 			{
-				$hintArr[$revealIndex] = $wordArr[$revealIndex];
-				$revealCount--;
-			}
-			else
-			{
-				while($revealCount > $revealCount - 1)
+				$revealIndex++;
+
+				if($revealIndex == $answerLen)
 				{
-					$revealIndex++;
-					
-					if($revealIndex == $answerLen)
-					{
-						$revealIndex = 0;
-					}
-					
-					if($hintArr[$revealIndex] eq "*")
-					{
-						$hintArr[$revealIndex] = $wordArr[$revealIndex];
-						$revealCount--;					
-					}
-					
+					$revealIndex = 0;
 				}
+
+				if($hintArr[$revealIndex] eq "*")
+				{
+					$hintArr[$revealIndex] = $wordArr[$revealIndex];
+					$revealCount--;					
+				}
+
 			}
 		}
 		
