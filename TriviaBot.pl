@@ -238,7 +238,10 @@ sub show_hint {
 		
 		for(my $i = 0; $i < $answerLen; $i++)
 		{
-			$hintArr[$i] = "*";
+			if($hintArr[$i] ne " ")
+			{
+				$hintArr[$i] = "*";
+			}
 		}
 	}
 	else
@@ -260,7 +263,7 @@ sub show_hint {
 	# get the number of letters to reveal
 	$revealCount = $counter * 0.45;
 
-	# reveal more letters in the hint
+	# reveal letters in the hint
 	while($revealCount > 0)
 	{
 		$revealIndex = rand($answerLen);
@@ -273,24 +276,24 @@ sub show_hint {
 		}
 		else
 		{
-			while($revealCount > ($revealCount - 1))
+			# go find the next possible spot to reveal
+			while(1)
 			{
 				$revealIndex++;
-
+		
 				if($revealIndex == $answerLen)
 				{
 					$revealIndex = 0;
 				}
-
+		
 				if($hintArr[$revealIndex] eq "*")
 				{
 					$hintArr[$revealIndex] = $wordArr[$revealIndex];
-					$revealCount--;					
+					$revealCount--;
+					last;					
 				}
-
 			}
 		}
-		
 	}
 	
 	$hint = join('',@hintArr);
