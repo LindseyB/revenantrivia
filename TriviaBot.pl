@@ -159,13 +159,13 @@ sub trivia_loop {
 		ask_question($conn);
 	}
 	
-	if(get_seconds() > 30)
+	if(get_seconds() > 60 && $questionAsked == 1)
 	{
 		$conn->privmsg($conn->{channel}, "Time up! The answer was " . $answer );
 		$questionAsked = 0;
 		$numQuestions--;
 		
-		if($numQuestions == 0)
+		if($numQuestions == 0 )
 		{
 			$conn->privmsg($conn->{channel}, "Stopping Trivia: Round of " . $qNum . " questions over." );
 			show_scores($conn);
@@ -173,7 +173,7 @@ sub trivia_loop {
 		}
 	}
 	
-	if(get_seconds() == 10 || get_seconds() == 20 || get_seconds() == 30)
+	if((get_seconds() == 10 || get_seconds() == 20 || get_seconds() == 30) && $questionAsked == 1)
 	{
 		show_hint($conn);
 		$qPoints--;
@@ -228,8 +228,9 @@ sub show_hint {
 	my $prevHint = $hint;
 	my $answerLen = length($answer);
 	
-	my $revealCount = int $answerLen * 0.3;
+	my $revealCount = int $answerLen * 0.45;
 	my @hintArr;
+	
 	
 	# create the hint
 	if($prevHint eq "")
@@ -256,6 +257,22 @@ sub show_hint {
 		my @wordArr = split(//, $answer);
 		@hintArr = split(//, $prevHint);
 		
+		# check if we can actually reveal the number of letters
+		my $counter;
+		
+		for(my $i=0; $i<$answerLen; $i++)
+		{
+			if($hintArr[$i] eq "*")
+			{
+				$counter++;
+			}
+		}
+		
+		if($counter < $revealCount)
+		{
+			$revealCount = $counter;
+		}
+		
 		# reveal more letters in the hint
 		while($revealCount > 0)
 		{
@@ -266,6 +283,25 @@ sub show_hint {
 			{
 				$hintArr[$revealIndex] = $wordArr[$revealIndex];
 				$revealCount--;
+			}
+			else
+			{
+				while($revealCount > $revealCount - 1)
+				{
+					$revealIndex++;
+					
+					if($revealIndex == $answerLen)
+					{
+						$revealIndex = 0;
+					}
+					
+					if($hintArr[$revealIndex] eq "*")
+					{
+						$hintArr[$revealIndex] = $wordArr[$revealIndex];
+						$revealCount--;					
+					}
+					
+				}
 			}
 		}
 		
