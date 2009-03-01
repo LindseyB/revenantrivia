@@ -135,7 +135,7 @@ sub on_public {
 		{
 			$conn->privmsg($conn->{channel}, $event->{nick}." is awarded " . $qPoints . " points for the answer: " . $answer);
 			$questionAsked = 0;
-			award_points($conn, $event->{nick}, 1);
+			award_points($conn, $event->{nick}, $qPoints);
 			$numQuestions--;
 			
 			if($numQuestions == 0)
