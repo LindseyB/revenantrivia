@@ -116,6 +116,7 @@ sub on_public {
 	{
 		$conn->privmsg($conn->{channel}, "Stopping trivia...");
 		$triviaStatus = 0;
+		$questionAsked = 0;
 	}
 
 	if($text =~ m/^\!hof/)
@@ -238,7 +239,7 @@ sub show_hint {
 		
 		for(my $i = 0; $i < $answerLen; $i++)
 		{
-			if($hintArr[$i] ne " ")
+			if($hintArr[$i] ne " " && $hintArr[$i] ne "." && $hintArr[$i] ne "-" && $hintArr[$i] ne "?" && $hintArr[$i] ne "'" && $hintArr[$i] ne '"')
 			{
 				$hintArr[$i] = "*";
 			}
