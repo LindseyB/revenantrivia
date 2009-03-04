@@ -39,6 +39,7 @@ my $startTime;
 my $totalQuestions;
 my $hint;
 my $qPoints;
+my $hintTime;
 
 sub on_connect {
 
@@ -157,6 +158,7 @@ sub trivia_loop {
 		$questionAsked = 1;
 		$qPoints = 4;
 		$startTime = time;
+		$hintTime = time;
 		ask_question($conn);
 	}
 	
@@ -174,10 +176,11 @@ sub trivia_loop {
 		}
 	}
 	
-	if((get_seconds() == 10 || get_seconds() == 20 || get_seconds() == 30) && $questionAsked == 1)
+	if(get_seconds($hintTime) > 10 && $qPoints > 1)
 	{
 		show_hint($conn);
 		$qPoints--;
+		$hintTime = time;
 	}
 
 }
@@ -186,7 +189,8 @@ sub trivia_loop {
 # get the number of seconds passed 
 sub get_seconds {
 	my $curTime = time;
-	my $seconds = $curTime - $startTime;
+	my $sTime = shift || $startTime;
+	my $seconds = $curTime - $sTime;
 	
 	return $seconds;
 }
@@ -235,15 +239,9 @@ sub show_hint {
 	# create the hint
 	if($prevHint eq "")
 	{
-		@hintArr = split(//, $answer);
-		
-		for(my $i = 0; $i < $answerLen; $i++)
-		{
-			if($hintArr[$i] ne " " && $hintArr[$i] ne "." && $hintArr[$i] ne "-" && $hintArr[$i] ne "?" && $hintArr[$i] ne "'" && $hintArr[$i] ne '"')
-			{
-				$hintArr[$i] = "*";
-			}
-		}
+		$prevHint = $answer;
+		$prevHint =~ tr/[a-zA-Z0-9]/\*/;
+		@hintArr = split(//, $prevHint);
 	}
 	else
 	{
