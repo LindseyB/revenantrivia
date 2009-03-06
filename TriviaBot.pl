@@ -125,6 +125,12 @@ sub on_public {
 		# show scores
 		show_scores($conn);
 	}
+	
+	if($text =~ m/^\!score/)
+	{
+		# show individual states
+		show_stats($event->{nick});
+	}
 
 	if($triviaStatus == 1)
 	{
@@ -328,6 +334,23 @@ sub award_points {
 		$sth->finish();	
 	}
 	
+}
+
+sub show_stats {
+	my $player = shift;
+	
+	my $sth = $dbh->prepare(qq{SELECT score FROM players WHERE player = '$player'});
+	$sth->execute() or die $dbh->errstrl;
+	my $result = $sth->fetchrow_hashref();
+	my $points = $result->{score};
+	$sth->finish();
+	
+	if($points eq "")
+	{
+		$points = 0;
+	}
+	
+	$conn->privmsg($conn->{channel}, $player . ", you have " . $points . " points." );
 }
 
 # show the scores
