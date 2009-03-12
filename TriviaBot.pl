@@ -108,9 +108,16 @@ sub on_public {
 			$numQuestions = $1;
 		}
 		
+		my $sth = $dbh->prepare(qq{SELECT count(id) FROM questions});
+		$sth->execute() or die $dbh->errstr;
+
+		my @result = $sth->fetchrow_array();
+		
 		$qNum = 0;
-		$conn->privmsg($conn->{channel}, "Starting trivia round of $numQuestions questions.");
+		$conn->privmsg($conn->{channel}, "Starting trivia round of $numQuestions questions - $totalQuestions total.");
 		$triviaStatus = 1;
+		
+		$sth->finish();
 	}
 
 	if($text =~ m/^\!strivia/ && $triviaStatus == 1)
@@ -209,17 +216,19 @@ sub ask_question {
 	
 	my $question_number = rand($totalQuestions) + 1; 
 	$question_number = int $question_number;
+	my $flag = 0;
 	
 	# get and echo the question
 	my $sth = $dbh->prepare(qq{SELECT question,answer FROM questions WHERE id = $question_number});
-	$sth->execute() or die $dbh->errstr;
+	$sth->execute() or $flag = 1;
 
 	my $result = $sth->fetchrow_hashref();
 	$answer = $result->{answer};
 	
-	if($result->{question} eq "" || $answer eq "")
+	if($flag == 1)
 	{
-		# null question or answer, pick a new one
+		# null question or answer, remove and pick a new one
+		$dbh->do(qq{DELETE FROM questions where id = $question_number });
 		ask_question();
 	}
 	else
@@ -318,11 +327,13 @@ sub award_points {
 	my $result = $sth->fetchrow_hashref();
 	my $curpoints = $result->{score};
 	$sth->finish();
+	
+	my $answerTime = getSeconds();
 
 	if($curpoints eq "")
 	{
 		# insert the player and points
-		$dbh->do(qq{INSERT INTO players values('$player', $points)}) or die $dbh->errstr;
+		$dbh->do(qq{INSERT INTO players values('$player', $points, 1, $answerTime)}) or die $dbh->errstr;
 	}
 	else
 	{
@@ -387,6 +398,11 @@ sub show_scores {
 	$sth->finish();
 }
 
+# delete all questions where there is no value in one or more of the fields
+sub clean_db {
+	$dbh->do(qq{DELETE FROM questions where id IS NULL OR question IS NULL OR answer IS NULL }) or die $dbh->errstrl;
+}
+
 $conn->add_handler('join', \&on_join);
 $conn->add_handler('part', \&on_part);
 $conn->add_handler('public', \&on_public);
@@ -394,6 +410,8 @@ $conn->add_handler('msg', \&on_msg);
 
 # The end of MOTD (message of the day), numbered 376 signifies we've connected
 $conn->add_handler('376', \&on_connect);
+
+clean_db();
 
 # while bot is running handle the trivia and the irc 
 while(1) {
