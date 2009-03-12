@@ -40,6 +40,8 @@ my $totalQuestions;
 my $hint;
 my $qPoints;
 my $hintTime;
+my $streakPlayer;
+my $streak;
 
 sub on_connect {
 
@@ -114,6 +116,7 @@ sub on_public {
 		my @result = $sth->fetchrow_array();
 		
 		$qNum = 0;
+		$streakPlayer = "";
 		$conn->privmsg($conn->{channel}, "Starting trivia round of $numQuestions questions - $totalQuestions total.");
 		$triviaStatus = 1;
 		
@@ -321,14 +324,26 @@ sub award_points {
 	my $player = shift;
 	my $points = shift;
 	
+	if($streakPlayer ne $player)
+	{
+		$streakPlayer = $player;
+		$streak = 1;
+	}
+	else
+	{
+		$streak++;
+	}
+	
 	# check if player is in the database already
 	my $sth = $dbh->prepare(qq{SELECT * FROM players WHERE player = '$player'});
 	$sth->execute() or die $dbh->errstrl;
 	my $result = $sth->fetchrow_hashref();
 	my $curpoints = $result->{score};
+	my $curtime = $result->{time};
+	my $curstreak = $result->{streak};
 	$sth->finish();
 	
-	my $answerTime = getSeconds();
+	my $answerTime = get_seconds();
 
 	if($curpoints eq "")
 	{
@@ -340,9 +355,20 @@ sub award_points {
 		# update the player's points
 		$points += $curpoints;
 		
-		$sth = $dbh->prepare(qq{UPDATE players SET score = $points  WHERE player = '$player'});
+		if($streak > $curstreak)
+		{
+			$curstreak = $streak;
+		}
+		
+		if($answerTime < $curtime)
+		{
+			$curtime = $answerTime; 
+		}
+		
+		$sth = $dbh->prepare(qq{UPDATE players SET score = $points, time = $curtime, streak = $curstreak  WHERE player = '$player'});
 		$sth->execute() or die $dbh->errstr;
-		$sth->finish();	
+		$sth->finish();
+	
 	}
 	
 }
@@ -370,7 +396,7 @@ sub show_scores {
 
 	my $sth = $dbh->prepare(qq{SELECT * FROM players ORDER BY score DESC});
 	$sth->execute() or die $dbh->errstrl;
-	#my $result = $sth->fetchrow_hashref();
+	
 	my $msg = "The top scoring players are: ";
 	
 	my $i = 0;
@@ -393,6 +419,19 @@ sub show_scores {
 		}
 		$i++;
 	}
+	
+	# append the best time and streak
+	$sth = $dbh->prepare(qq{SELECT * FROM players ORDER BY time ASC});
+	$sth->execute() or die $dbh->errstrl;
+	my $result = $sth->fetchrow_hashref();
+	
+	$msg .= " Best time " . $result->{time} ." by " . $result->{player} . ".";
+
+	$sth = $dbh->prepare(qq{SELECT * FROM players ORDER BY streak DESC});
+	$sth->execute() or die $dbh->errstrl;
+	$result = $sth->fetchrow_hashref();
+	
+	$msg .= " Best streak " . $result->{streak} . " by " . $result->{player} . ".";
 	
 	$conn->privmsg($conn->{channel}, $msg);
 	$sth->finish();
