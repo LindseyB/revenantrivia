@@ -232,6 +232,7 @@ sub ask_question {
 	{
 		# null question or answer, remove and pick a new one
 		$dbh->do(qq{DELETE FROM questions where id = $question_number });
+		$qNum--;
 		ask_question();
 	}
 	else
