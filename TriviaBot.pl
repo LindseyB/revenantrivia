@@ -214,15 +214,12 @@ sub get_seconds {
 # ask a question
 sub ask_question {
 	my $conn = shift;
+	my $flag = 0;
 	
 	$qNum++;
 	
-	my $question_number = rand($totalQuestions) + 1; 
-	$question_number = int $question_number;
-	my $flag = 0;
-	
 	# get and echo the question
-	my $sth = $dbh->prepare(qq{SELECT question,answer FROM questions WHERE id = $question_number});
+	my $sth = $dbh->prepare(qq{SELECT * FROM questions ORDER BY RANDOM() LIMIT 1});
 	$sth->execute() or $flag = 1;
 
 	my $result = $sth->fetchrow_hashref();
@@ -231,7 +228,7 @@ sub ask_question {
 	if($flag == 1)
 	{
 		# null question or answer, remove and pick a new one
-		$dbh->do(qq{DELETE FROM questions where id = $question_number });
+		$dbh->do(qq{DELETE FROM questions where id = $result->{id} });
 		$qNum--;
 		ask_question();
 	}
