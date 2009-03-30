@@ -8,7 +8,9 @@
 
 use Net::IRC;
 use DBI;
+use Time::HiRes qw( usleep gettimeofday tv_interval stat );
 use strict;
+
 
 my $irc = new Net::IRC;
 my $dbh = DBI->connect("dbi:SQLite:dbname=Trivia.db","","") or die "Can't open DB: $!";
@@ -42,6 +44,7 @@ my $qPoints;
 my $hintTime;
 my $streakPlayer;
 my $streak;
+my $startTimep;
 
 sub on_connect {
 
@@ -174,6 +177,7 @@ sub trivia_loop {
 		$questionAsked = 1;
 		$qPoints = 4;
 		$startTime = time;
+		$startTimep = [gettimeofday];
 		$hintTime = time;
 		ask_question($conn);
 	}
@@ -209,6 +213,11 @@ sub get_seconds {
 	my $seconds = $curTime - $sTime;
 	
 	return $seconds;
+}
+
+# get the time for the answer (more exact)
+sub get_answer_seconds {
+	return tv_interval ($startTimep, [gettimeofday]);
 }
 
 # ask a question
@@ -341,7 +350,7 @@ sub award_points {
 	my $curstreak = $result->{streak};
 	$sth->finish();
 	
-	my $answerTime = get_seconds();
+	my $answerTime = get_answer_seconds();
 
 	if($curpoints eq "")
 	{
