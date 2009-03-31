@@ -139,7 +139,7 @@ sub on_public {
 		show_scores($conn);
 	}
 	
-	if($text =~ m/^\!score/)
+	if($text =~ m/^\!stats/)
 	{
 		# show individual states
 		show_stats($event->{nick});
@@ -383,18 +383,19 @@ sub award_points {
 sub show_stats {
 	my $player = shift;
 	
-	my $sth = $dbh->prepare(qq{SELECT score FROM players WHERE player = '$player'});
+	my $sth = $dbh->prepare(qq{SELECT * FROM players WHERE player = '$player'});
 	$sth->execute() or die $dbh->errstrl;
 	my $result = $sth->fetchrow_hashref();
-	my $points = $result->{score};
+	#my $points = $result->{score};
 	$sth->finish();
 	
-	if($points eq "")
+	if($result->{score} eq "")
 	{
-		$points = 0;
+		$result->{score} = 0;
 	}
 	
-	$conn->privmsg($conn->{channel}, $player . ", you have " . $points . " points." );
+	$conn->privmsg($conn->{channel}, $player . ": you have " . $result->{score} . " points, a streak of " . $result->{streak} . 
+												" questions, and a record time of " . $result->{time}. " seconds.");
 }
 
 # show the scores
