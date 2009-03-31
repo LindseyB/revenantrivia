@@ -13,7 +13,7 @@ Currently Recognized Universal Commands:
 !trivia 20 : starts trivia with 20 questions (or some other specified number)
 !strivia   : stops the current round of trivia
 !hof       : hall of fame, show's the top 3 scorers and their points
-!score     : shows the players score who says the command
+!stats     : shows the speakers score, streak, and record answer time
 
 Currently Recognized Admin Commands: 
 /msg botName !quit password : will turn off the bot if the password is correct
