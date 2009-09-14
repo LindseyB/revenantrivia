@@ -15,20 +15,19 @@ use strict;
 my $irc = new Net::IRC;
 my $dbh = DBI->connect("dbi:SQLite:dbname=Trivia.db","","") or die "Can't open DB: $!";
 
-
 my $botName = "dO__Ob";       # the bots nick for IRC
 my $password = "trivia";      # the password for admining the bot
 my $defaultQuestions = 10;    # default number of questions if not specified 
 
 my $conn = $irc->newconn(
 	Server 		=> shift || 'irc.freenode.net',      # the network to connect to
-	Port		=> shift || '6667',                  # the port to use for the connection
+	Port		=> shift || '8001',                  # the port to use for the connection
 	Nick		=> $botName,
 	Ircname		=> 'A RevenanTrivia Bot',
 	Username	=> 'bot'
 );
 
-$conn->{channel} = shift || '#l2l';                  # the channel to join on successful connect
+$conn->{channel} = shift || '##l2l';                  # the channel to join on successful connect
 
 
 
@@ -352,7 +351,7 @@ sub award_points {
 	
 	my $answerTime = get_answer_seconds();
 
-	if($curpoints eq "")
+	if($curpoints eq "" || !defined($curpoints))
 	{
 		# insert the player and points
 		$dbh->do(qq{INSERT INTO players values('$player', $points, 1, $answerTime)}) or die $dbh->errstr;
