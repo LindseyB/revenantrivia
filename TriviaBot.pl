@@ -6,6 +6,12 @@
 # connects to IRC and runs a triviaBot on the given channel                     #
 #################################################################################
 
+
+use lib '/home/lindsey/modules/share/perl5/site_perl';
+use lib '/home/lindsey/modules/share/perl5';
+use lib '/home/lindsey/modules/lib/perl5/site_perl';
+use lib '/home/lindsey/modules/share/perl5/site_perl/5.10.1/';
+use lib '/home/lindsey/modules/lib/perl5/site_perl/5.10.1/';
 use Net::IRC;
 use DBI;
 use Time::HiRes qw( usleep gettimeofday tv_interval stat );
@@ -229,21 +235,27 @@ sub ask_question {
 	# get and echo the question
 	my $sth = $dbh->prepare(qq{SELECT * FROM questions ORDER BY RANDOM() LIMIT 1});
 	$sth->execute() or $flag = 1;
+	
+	my @row_array = $sth->fetchrow_array;
+	#my $result = $sth->fetchrow_hashref();
+	$answer = $row_array[2];
 
-	my $result = $sth->fetchrow_hashref();
-	$answer = $result->{answer};
+	if (!$answer){
+		$qNum--;
+		ask_question();
+	}
 	
 	if($flag == 1)
 	{
 		# null question or answer, remove and pick a new one
-		$dbh->do(qq{DELETE FROM questions where id = $result->{id} });
+		$dbh->do(qq{DELETE FROM questions where id = $row_array[0] });
 		$qNum--;
 		ask_question();
 	}
 	else
 	{
 		$hint = "";
-		$conn->privmsg($conn->{channel}, $qNum . ') ' . $result->{question});
+		$conn->privmsg($conn->{channel}, $qNum . ') ' . $row_array[1]);
 	}
 
 	$sth->finish();
@@ -343,10 +355,10 @@ sub award_points {
 	# check if player is in the database already
 	my $sth = $dbh->prepare(qq{SELECT * FROM players WHERE player = '$player'});
 	$sth->execute() or die $dbh->errstrl;
-	my $result = $sth->fetchrow_hashref();
-	my $curpoints = $result->{score};
-	my $curtime = $result->{time};
-	my $curstreak = $result->{streak};
+	my @result = $sth->fetchrow_array;
+	my $curpoints = $result[1];
+	my $curtime = $result[3];
+	my $curstreak = $result[2];
 	$sth->finish();
 	
 	my $answerTime = get_answer_seconds();
@@ -384,17 +396,17 @@ sub show_stats {
 	
 	my $sth = $dbh->prepare(qq{SELECT * FROM players WHERE player = '$player'});
 	$sth->execute() or die $dbh->errstrl;
-	my $result = $sth->fetchrow_hashref();
+	my @result = $sth->fetchrow_array();
 	#my $points = $result->{score};
 	$sth->finish();
 	
-	if($result->{score} eq "")
+	if($result[1] eq "")
 	{
-		$result->{score} = 0;
+		$result[1] = 0;
 	}
 	
-	$conn->privmsg($conn->{channel}, $player . ": you have " . $result->{score} . " points, a streak of " . $result->{streak} . 
-												" questions, and a record time of " . $result->{time}. " seconds.");
+	$conn->privmsg($conn->{channel}, $player . ": you have " . $result[1] . " points, a streak of " . $result[2] . 
+												" questions, and a record time of " . $result[3]. " seconds.");
 }
 
 # show the scores
@@ -430,15 +442,15 @@ sub show_scores {
 	# append the best time and streak
 	$sth = $dbh->prepare(qq{SELECT * FROM players ORDER BY time ASC});
 	$sth->execute() or die $dbh->errstrl;
-	my $result = $sth->fetchrow_hashref();
+	my @result = $sth->fetchrow_array();
 	
-	$msg .= " Best time " . $result->{time} ." by " . $result->{player} . ".";
+	$msg .= " Best time " . $result[3] ." by " . $result[0] . ".";
 
 	$sth = $dbh->prepare(qq{SELECT * FROM players ORDER BY streak DESC});
 	$sth->execute() or die $dbh->errstrl;
-	$result = $sth->fetchrow_hashref();
+	@result = $sth->fetchrow_array();
 	
-	$msg .= " Best streak " . $result->{streak} . " by " . $result->{player} . ".";
+	$msg .= " Best streak " . $result[2] . " by " . $result[0] . ".";
 	
 	$conn->privmsg($conn->{channel}, $msg);
 	$sth->finish();
