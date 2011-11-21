@@ -14,11 +14,6 @@
 #################################################################################
 
 
-use lib '/home/lindsey/modules/share/perl5/site_perl';
-use lib '/home/lindsey/modules/share/perl5';
-use lib '/home/lindsey/modules/lib/perl5/site_perl';
-use lib '/home/lindsey/modules/share/perl5/site_perl/5.10.1/';
-use lib '/home/lindsey/modules/lib/perl5/site_perl/5.10.1/';
 use Net::IRC;
 use DBI;
 use Time::HiRes qw( usleep gettimeofday tv_interval stat );
